@@ -43,6 +43,7 @@
                 Trash2: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>,
                 Edit2: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>,
                 Download: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>,
+                Upload: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>,
                 PieChart: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>,
                 Plus: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M5 12h14"/><path d="M12 5v14"/></svg>,
                 Save: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>,
@@ -53,7 +54,7 @@
             return icons[name] || null;
         };
 
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useRef } = React;
 
         // --- Constants & Utils ---
         const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -62,6 +63,26 @@
             if (!dateString) return '';
             const options = { year: 'numeric', month: 'long', day: 'numeric' };
             return new Date(dateString).toLocaleDateString(undefined, options);
+        };
+
+        // Simple CSV Line Parser to handle quoted fields
+        const parseCSVLine = (text) => {
+            let result = [];
+            let cell = '';
+            let inQuotes = false;
+            for (let i = 0; i < text.length; i++) {
+                let char = text[i];
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    result.push(cell.trim());
+                    cell = '';
+                } else {
+                    cell += char;
+                }
+            }
+            result.push(cell.trim());
+            return result;
         };
 
         const supervisors = [
@@ -84,6 +105,7 @@
             const [editingId, setEditingId] = useState(null);
             const [copiedEmail, setCopiedEmail] = useState(null);
             const [notification, setNotification] = useState(null);
+            const fileInputRef = useRef(null);
 
             // Suggestions
             const typeSuggestions = [...new Set(entries.map(e => e.type))];
@@ -168,8 +190,6 @@
             };
 
             const copyToClipboard = (text) => {
-                // Using older execCommand for better compatibility in some iframe/script contexts
-                // fallback for simple HTML file
                 const textArea = document.createElement("textarea");
                 textArea.value = text;
                 document.body.appendChild(textArea);
@@ -188,12 +208,13 @@
                 const headers = ["Date", "Description", "Organization", "Hours", "Supervisor Name", "Supervisor Email"];
                 const rows = entries.map(e => {
                     const sup = supervisors.find(s => s.email === e.supervisor) || { name: 'Unknown', email: e.supervisor };
+                    // Note: We wrap strings in quotes to handle commas safely
                     return [
                         e.date,
-                        `"${e.type}"`,
-                        `"${e.org}"`,
+                        `"${e.type.replace(/"/g, '""')}"`, // Escape existing quotes
+                        `"${e.org.replace(/"/g, '""')}"`,
                         e.hours,
-                        sup.name,
+                        `"${sup.name}"`,
                         sup.email
                     ].join(",");
                 });
@@ -206,6 +227,53 @@
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
+            };
+
+            const handleImport = (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const text = e.target.result;
+                    const lines = text.split('\n').filter(line => line.trim() !== '');
+                    
+                    // Skip header row (index 0)
+                    const newEntries = [];
+                    let successCount = 0;
+
+                    for (let i = 1; i < lines.length; i++) {
+                        const cols = parseCSVLine(lines[i]);
+                        if (cols.length >= 6) {
+                            // CSV Format: Date, Description, Org, Hours, SupName, SupEmail
+                            const cleanDesc = cols[1].replace(/^"|"$/g, '').replace(/""/g, '"');
+                            const cleanOrg = cols[2].replace(/^"|"$/g, '').replace(/""/g, '"');
+                            
+                            newEntries.push({
+                                id: generateId(),
+                                date: cols[0],
+                                type: cleanDesc,
+                                org: cleanOrg,
+                                hours: parseFloat(cols[3]),
+                                supervisor: cols[5] // Email
+                            });
+                            successCount++;
+                        }
+                    }
+
+                    if (successCount > 0) {
+                        if(window.confirm(`Found ${successCount} entries. Do you want to append them to your current list?`)) {
+                            setEntries(prev => [...prev, ...newEntries]);
+                            showNotification(`Successfully imported ${successCount} entries.`);
+                        }
+                    } else {
+                        showNotification("No valid entries found in CSV.");
+                    }
+                    
+                    // Reset input
+                    event.target.value = null;
+                };
+                reader.readAsText(file);
             };
 
             const totalHours = entries.reduce((sum, entry) => sum + (parseFloat(entry.hours) || 0), 0);
@@ -419,14 +487,30 @@
                                     </div>
                                 )}
                                 <div className="bg-slate-100 p-6 rounded-2xl border border-slate-200">
-                                    <div className="flex flex-col sm:flex-row justify-between items-center">
-                                        <div className="mb-4 sm:mb-0">
-                                            <h3 className="text-lg font-bold text-slate-800">Data Export</h3>
-                                            <p className="text-sm text-slate-500">Download your data for spreadsheet apps (Excel, Sheets).</p>
+                                    <div className="flex flex-col gap-4 justify-between items-start">
+                                        <div>
+                                            <h3 className="text-lg font-bold text-slate-800">Data Backup & Restore</h3>
+                                            <p className="text-sm text-slate-500">Download your data to keep it safe, or import it to restore on a new device.</p>
                                         </div>
-                                        <button onClick={exportCSV} className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-semibold py-3 px-6 rounded-xl shadow-sm transition-all flex items-center">
-                                            <Icon name="Download" className="w-4 h-4 mr-2" /> Download CSV
-                                        </button>
+                                        <div className="flex w-full flex-col sm:flex-row gap-3">
+                                            <button onClick={exportCSV} className="flex-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-semibold py-3 px-6 rounded-xl shadow-sm transition-all flex items-center justify-center">
+                                                <Icon name="Download" className="w-4 h-4 mr-2" /> Export CSV
+                                            </button>
+                                            
+                                            <input 
+                                                type="file" 
+                                                accept=".csv" 
+                                                ref={fileInputRef}
+                                                onChange={handleImport}
+                                                className="hidden" 
+                                            />
+                                            <button 
+                                                onClick={() => fileInputRef.current.click()}
+                                                className="flex-1 bg-white hover:bg-slate-50 text-indigo-600 border border-indigo-200 font-semibold py-3 px-6 rounded-xl shadow-sm transition-all flex items-center justify-center"
+                                            >
+                                                <Icon name="Upload" className="w-4 h-4 mr-2" /> Import CSV
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
