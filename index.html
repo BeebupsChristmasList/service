@@ -1,583 +1,443 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Calendar, 
-  Clock, 
-  User, 
-  Briefcase, 
-  Trash2, 
-  Edit2, 
-  Download, 
-  PieChart, 
-  Plus, 
-  Save, 
-  Copy, 
-  Check,
-  TrendingUp
-} from 'lucide-react';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Logger</title>
+    
+    <!-- 1. Load Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. Load React and ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- 3. Load Babel to translate React code in the browser -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-// --- Utility Functions ---
+    <!-- 4. Load Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 
-const generateId = () => Math.random().toString(36).substr(2, 9);
+    <style>
+        /* Custom animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <div id="root"></div>
 
-const formatDate = (dateString) => {
-  if (!dateString) return '';
-  const options = { year: 'numeric', month: 'long', day: 'numeric' };
-  return new Date(dateString).toLocaleDateString(undefined, options);
-};
+    <script type="text/babel">
+        // --- Icon Components (Inline SVGs for simplicity in HTML) ---
+        const Icon = ({ name, ...props }) => {
+            const icons = {
+                Calendar: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>,
+                Clock: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+                User: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+                Briefcase: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>,
+                Trash2: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>,
+                Edit2: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>,
+                Download: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>,
+                PieChart: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>,
+                Plus: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M5 12h14"/><path d="M12 5v14"/></svg>,
+                Save: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>,
+                Copy: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>,
+                Check: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="20 6 9 17 4 12"/></svg>,
+                TrendingUp: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+            };
+            return icons[name] || null;
+        };
 
-const supervisors = [
-  { name: 'Diane Flitcroft', email: 'dflitcroft@saintbernadette.com' },
-  { name: 'Ashley Kaschl', email: 'akaschl@popejohnxxiii.org' }
-];
+        const { useState, useEffect } = React;
 
-// --- Main Component ---
+        // --- Constants & Utils ---
+        const generateId = () => Math.random().toString(36).substr(2, 9);
 
-export default function ServiceLogger() {
-  // State
-  const [entries, setEntries] = useState([]);
-  const [view, setView] = useState('log'); // 'log', 'history', 'stats'
-  
-  // Default org set to Saint Bernadette Catholic Church
-  const [formData, setFormData] = useState({
-    id: '',
-    type: '', // We keep 'type' internally for backward compatibility, but label it Description
-    hours: '',
-    date: new Date().toISOString().split('T')[0],
-    org: 'Saint Bernadette Catholic Church',
-    supervisor: supervisors[0].email
-  });
-  const [editingId, setEditingId] = useState(null);
-  const [copiedEmail, setCopiedEmail] = useState(null);
-  const [notification, setNotification] = useState(null);
+        const formatDate = (dateString) => {
+            if (!dateString) return '';
+            const options = { year: 'numeric', month: 'long', day: 'numeric' };
+            return new Date(dateString).toLocaleDateString(undefined, options);
+        };
 
-  // Suggestions derived from history
-  const typeSuggestions = [...new Set(entries.map(e => e.type))];
-  const orgSuggestions = [...new Set(entries.map(e => e.org))];
+        const supervisors = [
+            { name: 'Diane Flitcroft', email: 'dflitcroft@saintbernadette.com' },
+            { name: 'Ashley Kaschl', email: 'akaschl@popejohnxxiii.org' }
+        ];
 
-  // Load data on mount
-  useEffect(() => {
-    const savedData = localStorage.getItem('service-hours-data');
-    if (savedData) {
-      try {
-        setEntries(JSON.parse(savedData));
-      } catch (e) {
-        console.error("Failed to load data", e);
-      }
-    }
-  }, []);
+        // --- Main Application ---
+        function ServiceLogger() {
+            const [entries, setEntries] = useState([]);
+            const [view, setView] = useState('log'); // 'log', 'history', 'stats'
+            const [formData, setFormData] = useState({
+                id: '',
+                type: '',
+                hours: '',
+                date: new Date().toISOString().split('T')[0],
+                org: 'Saint Bernadette Catholic Church',
+                supervisor: supervisors[0].email
+            });
+            const [editingId, setEditingId] = useState(null);
+            const [copiedEmail, setCopiedEmail] = useState(null);
+            const [notification, setNotification] = useState(null);
 
-  // Save data on change
-  useEffect(() => {
-    localStorage.setItem('service-hours-data', JSON.stringify(entries));
-  }, [entries]);
+            // Suggestions
+            const typeSuggestions = [...new Set(entries.map(e => e.type))];
+            const orgSuggestions = [...new Set(entries.map(e => e.org))];
 
-  // Notification Helper
-  const showNotification = (msg) => {
-    setNotification(msg);
-    setTimeout(() => setNotification(null), 3000);
-  };
+            // Load data
+            useEffect(() => {
+                const savedData = localStorage.getItem('service-hours-data');
+                if (savedData) {
+                    try {
+                        setEntries(JSON.parse(savedData));
+                    } catch (e) {
+                        console.error("Failed to load data", e);
+                    }
+                }
+            }, []);
 
-  // Form Handlers
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+            // Save data
+            useEffect(() => {
+                localStorage.setItem('service-hours-data', JSON.stringify(entries));
+            }, [entries]);
 
-  const handleSupervisorSelect = (email) => {
-    setFormData(prev => ({ ...prev, supervisor: email }));
-  };
+            const showNotification = (msg) => {
+                setNotification(msg);
+                setTimeout(() => setNotification(null), 3000);
+            };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!formData.hours || !formData.date || !formData.org || !formData.type) {
-      showNotification("Please fill in all required fields.");
-      return;
-    }
+            const handleInputChange = (e) => {
+                const { name, value } = e.target;
+                setFormData(prev => ({ ...prev, [name]: value }));
+            };
 
-    const entry = {
-      ...formData,
-      id: editingId || generateId(),
-      hours: parseFloat(formData.hours)
-    };
+            const handleSupervisorSelect = (email) => {
+                setFormData(prev => ({ ...prev, supervisor: email }));
+            };
 
-    if (editingId) {
-      setEntries(entries.map(item => item.id === editingId ? entry : item));
-      setEditingId(null);
-      showNotification("Entry updated successfully!");
-    } else {
-      setEntries([entry, ...entries]);
-      showNotification("Hours logged successfully!");
-    }
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!formData.hours || !formData.date || !formData.org || !formData.type) {
+                    showNotification("Please fill in all required fields.");
+                    return;
+                }
 
-    // Reset form, maintaining default org
-    setFormData({
-      id: '',
-      type: '',
-      hours: '',
-      date: new Date().toISOString().split('T')[0],
-      org: 'Saint Bernadette Catholic Church',
-      supervisor: supervisors[0].email
-    });
-  };
+                const entry = {
+                    ...formData,
+                    id: editingId || generateId(),
+                    hours: parseFloat(formData.hours)
+                };
 
-  const handleEdit = (entry) => {
-    setFormData({
-      ...entry,
-      supervisor: entry.supervisor // Ensure supervisor email matches
-    });
-    setEditingId(entry.id);
-    setView('log');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+                if (editingId) {
+                    setEntries(entries.map(item => item.id === editingId ? entry : item));
+                    setEditingId(null);
+                    showNotification("Entry updated successfully!");
+                } else {
+                    setEntries([entry, ...entries]);
+                    showNotification("Hours logged successfully!");
+                }
 
-  const handleDelete = (id) => {
-    if (window.confirm("Are you sure you want to delete this entry?")) {
-      setEntries(entries.filter(e => e.id !== id));
-      showNotification("Entry deleted.");
-    }
-  };
+                setFormData({
+                    id: '',
+                    type: '',
+                    hours: '',
+                    date: new Date().toISOString().split('T')[0],
+                    org: 'Saint Bernadette Catholic Church',
+                    supervisor: supervisors[0].email
+                });
+                setEditingId(null);
+            };
 
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text);
-    setCopiedEmail(text);
-    setTimeout(() => setCopiedEmail(null), 2000);
-  };
+            const handleEdit = (entry) => {
+                setFormData({ ...entry });
+                setEditingId(entry.id);
+                setView('log');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
 
-  // Export Data
-  const exportCSV = () => {
-    // Updated header from Service Type to Description
-    const headers = ["Date", "Description", "Organization", "Hours", "Supervisor Name", "Supervisor Email"];
-    const rows = entries.map(e => {
-      const sup = supervisors.find(s => s.email === e.supervisor) || { name: 'Unknown', email: e.supervisor };
-      return [
-        e.date,
-        `"${e.type}"`, // Quote strings to handle commas
-        `"${e.org}"`,
-        e.hours,
-        sup.name,
-        sup.email
-      ].join(",");
-    });
+            const handleDelete = (id) => {
+                if (window.confirm("Are you sure you want to delete this entry?")) {
+                    setEntries(entries.filter(e => e.id !== id));
+                    showNotification("Entry deleted.");
+                }
+            };
 
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `service_hours_export_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+            const copyToClipboard = (text) => {
+                // Using older execCommand for better compatibility in some iframe/script contexts
+                // fallback for simple HTML file
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    setCopiedEmail(text);
+                    setTimeout(() => setCopiedEmail(null), 2000);
+                } catch (err) {
+                    console.error('Fallback: Oops, unable to copy', err);
+                }
+                document.body.removeChild(textArea);
+            };
 
-  // Statistics Calculations
-  const totalHours = entries.reduce((sum, entry) => sum + (parseFloat(entry.hours) || 0), 0);
-  
-  // Chart Data Preparation (Group by Month)
-  const getChartData = () => {
-    const months = {};
-    entries.forEach(entry => {
-      const date = new Date(entry.date);
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`; // YYYY-MM
-      months[key] = (months[key] || 0) + parseFloat(entry.hours);
-    });
+            const exportCSV = () => {
+                const headers = ["Date", "Description", "Organization", "Hours", "Supervisor Name", "Supervisor Email"];
+                const rows = entries.map(e => {
+                    const sup = supervisors.find(s => s.email === e.supervisor) || { name: 'Unknown', email: e.supervisor };
+                    return [
+                        e.date,
+                        `"${e.type}"`,
+                        `"${e.org}"`,
+                        e.hours,
+                        sup.name,
+                        sup.email
+                    ].join(",");
+                });
 
-    // Sort by date and take last 6 active months or just sort keys
-    const sortedKeys = Object.keys(months).sort();
-    return sortedKeys.map(key => {
-      const [year, month] = key.split('-');
-      const label = new Date(parseInt(year), parseInt(month) - 1).toLocaleString('default', { month: 'short', year: '2-digit' });
-      return { label, hours: months[key] };
-    });
-  };
+                const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `service_hours_export_${new Date().toISOString().split('T')[0]}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
 
-  const chartData = getChartData();
-  const maxHours = Math.max(...chartData.map(d => d.hours), 1); // Avoid div by zero
+            const totalHours = entries.reduce((sum, entry) => sum + (parseFloat(entry.hours) || 0), 0);
 
-  return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-12">
-      {/* Notification Toast */}
-      {notification && (
-        <div className="fixed top-4 right-4 bg-emerald-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-bounce-in">
-          {notification}
-        </div>
-      )}
+            const getChartData = () => {
+                const months = {};
+                entries.forEach(entry => {
+                    const date = new Date(entry.date);
+                    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                    months[key] = (months[key] || 0) + parseFloat(entry.hours);
+                });
+                const sortedKeys = Object.keys(months).sort();
+                return sortedKeys.map(key => {
+                    const [year, month] = key.split('-');
+                    const label = new Date(parseInt(year), parseInt(month) - 1).toLocaleString('default', { month: 'short', year: '2-digit' });
+                    return { label, hours: months[key] };
+                });
+            };
 
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <div className="bg-indigo-600 p-2 rounded-lg">
-              <Clock className="text-white w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-slate-900">ServiceLog</h1>
-              <p className="text-xs text-slate-500 hidden sm:block">Track your impact</p>
-            </div>
-          </div>
-          <div className="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-full font-semibold text-sm flex items-center">
-            <span className="mr-1">Total:</span>
-            <span className="text-lg">{totalHours}</span>
-            <span className="ml-1 text-xs uppercase tracking-wide">hrs</span>
-          </div>
-        </div>
-      </header>
+            const chartData = getChartData();
+            const maxHours = Math.max(...chartData.map(d => d.hours), 1);
 
-      {/* Navigation Tabs */}
-      <div className="max-w-4xl mx-auto px-4 py-6">
-        <div className="flex p-1 space-x-1 bg-slate-200/60 rounded-xl mb-6">
-          <button
-            onClick={() => setView('log')}
-            className={`flex-1 flex items-center justify-center py-2.5 text-sm font-medium rounded-lg transition-all ${
-              view === 'log' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-            }`}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Log Hours
-          </button>
-          <button
-            onClick={() => setView('history')}
-            className={`flex-1 flex items-center justify-center py-2.5 text-sm font-medium rounded-lg transition-all ${
-              view === 'history' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-            }`}
-          >
-            <Calendar className="w-4 h-4 mr-2" />
-            History
-          </button>
-          <button
-            onClick={() => setView('stats')}
-            className={`flex-1 flex items-center justify-center py-2.5 text-sm font-medium rounded-lg transition-all ${
-              view === 'stats' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-            }`}
-          >
-            <PieChart className="w-4 h-4 mr-2" />
-            Reports
-          </button>
-        </div>
-
-        {/* --- LOG VIEW --- */}
-        {view === 'log' && (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden animate-fade-in">
-            <div className="p-6 border-b border-slate-100">
-              <h2 className="text-lg font-semibold text-slate-800">
-                {editingId ? 'Edit Entry' : 'New Service Entry'}
-              </h2>
-            </div>
-            
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              {/* Top Row: Date & Hours */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-slate-700">Date</label>
-                  <div className="relative">
-                    <input
-                      type="date"
-                      name="date"
-                      required
-                      value={formData.date}
-                      onChange={handleInputChange}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none"
-                    />
-                    <Calendar className="absolute left-3 top-3.5 text-slate-400 w-5 h-5" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-slate-700">Hours</label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      step="0.25"
-                      name="hours"
-                      required
-                      min="0"
-                      placeholder="0.0"
-                      value={formData.hours}
-                      onChange={handleInputChange}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none"
-                    />
-                    <Clock className="absolute left-3 top-3.5 text-slate-400 w-5 h-5" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Middle Row: Type & Org */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-slate-700">Description</label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      name="type"
-                      required
-                      list="type-options"
-                      placeholder="e.g. Served food, Cleaned up..."
-                      value={formData.type}
-                      onChange={handleInputChange}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none"
-                    />
-                    <datalist id="type-options">
-                      {typeSuggestions.map((t, i) => <option key={i} value={t} />)}
-                    </datalist>
-                    <Briefcase className="absolute left-3 top-3.5 text-slate-400 w-5 h-5" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-slate-700">Organization</label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      name="org"
-                      required
-                      list="org-options"
-                      placeholder="e.g. Saint Bernadette"
-                      value={formData.org}
-                      onChange={handleInputChange}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none"
-                    />
-                    <datalist id="org-options">
-                      {orgSuggestions.map((o, i) => <option key={i} value={o} />)}
-                    </datalist>
-                    <User className="absolute left-3 top-3.5 text-slate-400 w-5 h-5" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Supervisors */}
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-slate-700">Supervisor</label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {supervisors.map((sup) => (
-                    <div 
-                      key={sup.email}
-                      onClick={() => handleSupervisorSelect(sup.email)}
-                      className={`relative cursor-pointer p-4 rounded-xl border-2 transition-all ${
-                        formData.supervisor === sup.email 
-                          ? 'border-indigo-500 bg-indigo-50' 
-                          : 'border-slate-100 bg-slate-50 hover:border-indigo-200'
-                      }`}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-semibold text-slate-900">{sup.name}</p>
-                          {/* Label removed as requested */}
-                          <p className="text-sm text-slate-600 break-all mt-1">{sup.email}</p>
+            return (
+                <div className="min-h-screen pb-12">
+                    {notification && (
+                        <div className="fixed top-4 right-4 bg-emerald-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-bounce-in">
+                            {notification}
                         </div>
-                        {formData.supervisor === sup.email && (
-                          <div className="bg-indigo-500 text-white rounded-full p-1">
-                            <Check className="w-4 h-4" />
-                          </div>
+                    )}
+
+                    <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
+                        <div className="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+                            <div className="flex items-center space-x-2">
+                                <div className="bg-indigo-600 p-2 rounded-lg">
+                                    <Icon name="Clock" className="text-white w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h1 className="text-xl font-bold text-slate-900">ServiceLog</h1>
+                                    <p className="text-xs text-slate-500 hidden sm:block">Track your impact</p>
+                                </div>
+                            </div>
+                            <div className="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-full font-semibold text-sm flex items-center">
+                                <span className="mr-1">Total:</span>
+                                <span className="text-lg">{totalHours}</span>
+                                <span className="ml-1 text-xs uppercase tracking-wide">hrs</span>
+                            </div>
+                        </div>
+                    </header>
+
+                    <div className="max-w-4xl mx-auto px-4 py-6">
+                        <div className="flex p-1 space-x-1 bg-slate-200/60 rounded-xl mb-6">
+                            <button onClick={() => setView('log')} className={`flex-1 flex items-center justify-center py-2.5 text-sm font-medium rounded-lg transition-all ${view === 'log' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'}`}>
+                                <Icon name="Plus" className="w-4 h-4 mr-2" /> Log Hours
+                            </button>
+                            <button onClick={() => setView('history')} className={`flex-1 flex items-center justify-center py-2.5 text-sm font-medium rounded-lg transition-all ${view === 'history' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'}`}>
+                                <Icon name="Calendar" className="w-4 h-4 mr-2" /> History
+                            </button>
+                            <button onClick={() => setView('stats')} className={`flex-1 flex items-center justify-center py-2.5 text-sm font-medium rounded-lg transition-all ${view === 'stats' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'}`}>
+                                <Icon name="PieChart" className="w-4 h-4 mr-2" /> Reports
+                            </button>
+                        </div>
+
+                        {view === 'log' && (
+                            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden animate-fade-in">
+                                <div className="p-6 border-b border-slate-100">
+                                    <h2 className="text-lg font-semibold text-slate-800">{editingId ? 'Edit Entry' : 'New Service Entry'}</h2>
+                                </div>
+                                <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-medium text-slate-700">Date</label>
+                                            <div className="relative">
+                                                <input type="date" name="date" required value={formData.date} onChange={handleInputChange} className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none" />
+                                                <div className="absolute left-3 top-3.5 text-slate-400"><Icon name="Calendar" width="20" height="20" /></div>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-medium text-slate-700">Hours</label>
+                                            <div className="relative">
+                                                <input type="number" step="0.25" name="hours" required min="0" placeholder="0.0" value={formData.hours} onChange={handleInputChange} className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none" />
+                                                <div className="absolute left-3 top-3.5 text-slate-400"><Icon name="Clock" width="20" height="20" /></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-medium text-slate-700">Description</label>
+                                            <div className="relative">
+                                                <input type="text" name="type" required list="type-options" placeholder="e.g. Served food, Cleaned up..." value={formData.type} onChange={handleInputChange} className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none" />
+                                                <datalist id="type-options">{typeSuggestions.map((t, i) => <option key={i} value={t} />)}</datalist>
+                                                <div className="absolute left-3 top-3.5 text-slate-400"><Icon name="Briefcase" width="20" height="20" /></div>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-medium text-slate-700">Organization</label>
+                                            <div className="relative">
+                                                <input type="text" name="org" required list="org-options" placeholder="e.g. Saint Bernadette" value={formData.org} onChange={handleInputChange} className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none" />
+                                                <datalist id="org-options">{orgSuggestions.map((o, i) => <option key={i} value={o} />)}</datalist>
+                                                <div className="absolute left-3 top-3.5 text-slate-400"><Icon name="User" width="20" height="20" /></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <label className="block text-sm font-medium text-slate-700">Supervisor</label>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {supervisors.map((sup) => (
+                                                <div key={sup.email} onClick={() => handleSupervisorSelect(sup.email)} className={`relative cursor-pointer p-4 rounded-xl border-2 transition-all ${formData.supervisor === sup.email ? 'border-indigo-500 bg-indigo-50' : 'border-slate-100 bg-slate-50 hover:border-indigo-200'}`}>
+                                                    <div className="flex justify-between items-start">
+                                                        <div>
+                                                            <p className="font-semibold text-slate-900">{sup.name}</p>
+                                                            <p className="text-sm text-slate-600 break-all mt-1">{sup.email}</p>
+                                                        </div>
+                                                        {formData.supervisor === sup.email && <div className="bg-indigo-500 text-white rounded-full p-1"><Icon name="Check" width="16" height="16" /></div>}
+                                                    </div>
+                                                    <button type="button" onClick={(e) => { e.stopPropagation(); copyToClipboard(sup.email); }} className="mt-3 flex items-center text-xs text-indigo-600 hover:text-indigo-800 font-medium">
+                                                        {copiedEmail === sup.email ? <><Icon name="Check" width="12" height="12" className="mr-1"/> Copied</> : <><Icon name="Copy" width="12" height="12" className="mr-1" /> Copy Email</>}
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="pt-4">
+                                        <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 rounded-xl shadow-lg shadow-indigo-200 transition-all flex items-center justify-center">
+                                            {editingId ? <><Icon name="Save" className="w-5 h-5 mr-2" /> Update Entry</> : <><Icon name="Plus" className="w-5 h-5 mr-2" /> Log Hours</>}
+                                        </button>
+                                        {editingId && <button type="button" onClick={() => { setEditingId(null); setFormData({ id: '', type: '', hours: '', date: new Date().toISOString().split('T')[0], org: 'Saint Bernadette Catholic Church', supervisor: supervisors[0].email }); }} className="w-full mt-3 text-slate-500 font-medium py-2 hover:text-slate-800">Cancel Edit</button>}
+                                    </div>
+                                </form>
+                            </div>
                         )}
-                      </div>
-                      
-                      <button 
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          copyToClipboard(sup.email);
-                        }}
-                        className="mt-3 flex items-center text-xs text-indigo-600 hover:text-indigo-800 font-medium"
-                      >
-                        {copiedEmail === sup.email ? (
-                          <>
-                            <Check className="w-3 h-3 mr-1" /> Copied
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3 h-3 mr-1" /> Copy Email
-                          </>
+
+                        {view === 'history' && (
+                            <div className="space-y-4 animate-fade-in">
+                                {entries.length === 0 ? (
+                                    <div className="text-center py-12 bg-white rounded-2xl border border-slate-200">
+                                        <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"><Icon name="Calendar" className="text-slate-300 w-8 h-8" /></div>
+                                        <p className="text-slate-500 text-lg">No hours logged yet.</p>
+                                        <button onClick={() => setView('log')} className="mt-4 text-indigo-600 font-medium hover:underline">Log your first entry</button>
+                                    </div>
+                                ) : (
+                                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left">
+                                                <thead className="bg-slate-50 border-b border-slate-200">
+                                                    <tr>
+                                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Date</th>
+                                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Details</th>
+                                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Hours</th>
+                                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100">
+                                                    {entries.sort((a, b) => new Date(b.date) - new Date(a.date)).map((entry) => (
+                                                        <tr key={entry.id} className="hover:bg-slate-50 transition-colors">
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{formatDate(entry.date)}</td>
+                                                            <td className="px-6 py-4">
+                                                                <p className="text-sm font-semibold text-slate-800">{entry.type}</p>
+                                                                <p className="text-xs text-slate-500">{entry.org}</p>
+                                                                <p className="text-xs text-indigo-600 mt-0.5">{supervisors.find(s => s.email === entry.supervisor)?.name}</p>
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900 text-right">{parseFloat(entry.hours).toFixed(2)}</td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                                                                <button onClick={() => handleEdit(entry)} className="text-indigo-600 hover:text-indigo-900 p-2 rounded-full hover:bg-indigo-50 mr-2 transition-colors" title="Edit"><Icon name="Edit2" width="16" height="16" /></button>
+                                                                <button onClick={() => handleDelete(entry.id)} className="text-rose-500 hover:text-rose-700 p-2 rounded-full hover:bg-rose-50 transition-colors" title="Delete"><Icon name="Trash2" width="16" height="16" /></button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         )}
-                      </button>
+
+                        {view === 'stats' && (
+                            <div className="space-y-6 animate-fade-in">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="bg-indigo-600 text-white p-6 rounded-2xl shadow-lg shadow-indigo-200 relative overflow-hidden">
+                                        <div className="relative z-10">
+                                            <p className="text-indigo-100 font-medium mb-1">Total Service</p>
+                                            <h3 className="text-4xl font-bold">{totalHours} <span className="text-xl font-normal text-indigo-200">hours</span></h3>
+                                        </div>
+                                        <div className="absolute right-4 bottom-4 text-indigo-500 opacity-20"><Icon name="Clock" width="96" height="96" /></div>
+                                    </div>
+                                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-center items-center text-center">
+                                        <p className="text-slate-500 font-medium mb-2">Entries Logged</p>
+                                        <h3 className="text-4xl font-bold text-slate-800">{entries.length}</h3>
+                                        <p className="text-xs text-slate-400 mt-1">Keep it up!</p>
+                                    </div>
+                                </div>
+                                {chartData.length > 0 && (
+                                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                                        <div className="flex justify-between items-end mb-6">
+                                            <h3 className="text-lg font-bold text-slate-800 flex items-center"><Icon name="TrendingUp" className="w-5 h-5 mr-2 text-indigo-600" /> Monthly Activity</h3>
+                                        </div>
+                                        <div className="h-64 w-full flex items-end justify-between space-x-2 sm:space-x-4 pb-2">
+                                            {chartData.map((data, i) => {
+                                                const heightPercent = (data.hours / maxHours) * 100;
+                                                return (
+                                                    <div key={i} className="flex-1 flex flex-col items-center group">
+                                                        <div className="relative w-full flex items-end justify-center h-full">
+                                                            <div className="absolute -top-8 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-xs py-1 px-2 rounded mb-1 whitespace-nowrap z-10">{data.hours} hrs</div>
+                                                            <div className="w-full max-w-[40px] bg-indigo-200 group-hover:bg-indigo-500 rounded-t-lg transition-all duration-500 ease-out relative" style={{ height: `${heightPercent}%` }}></div>
+                                                        </div>
+                                                        <span className="text-xs text-slate-500 mt-2 font-medium truncate w-full text-center">{data.label}</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="bg-slate-100 p-6 rounded-2xl border border-slate-200">
+                                    <div className="flex flex-col sm:flex-row justify-between items-center">
+                                        <div className="mb-4 sm:mb-0">
+                                            <h3 className="text-lg font-bold text-slate-800">Data Export</h3>
+                                            <p className="text-sm text-slate-500">Download your data for spreadsheet apps (Excel, Sheets).</p>
+                                        </div>
+                                        <button onClick={exportCSV} className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-semibold py-3 px-6 rounded-xl shadow-sm transition-all flex items-center">
+                                            <Icon name="Download" className="w-4 h-4 mr-2" /> Download CSV
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
-                  ))}
                 </div>
-              </div>
+            );
+        }
 
-              {/* Submit Button */}
-              <div className="pt-4">
-                <button
-                  type="submit"
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 rounded-xl shadow-lg shadow-indigo-200 transition-all flex items-center justify-center"
-                >
-                  {editingId ? (
-                    <>
-                      <Save className="w-5 h-5 mr-2" /> Update Entry
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="w-5 h-5 mr-2" /> Log Hours
-                    </>
-                  )}
-                </button>
-                {editingId && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingId(null);
-                      setFormData({
-                        id: '',
-                        type: '',
-                        hours: '',
-                        date: new Date().toISOString().split('T')[0],
-                        org: 'Saint Bernadette Catholic Church',
-                        supervisor: supervisors[0].email
-                      });
-                    }}
-                    className="w-full mt-3 text-slate-500 font-medium py-2 hover:text-slate-800"
-                  >
-                    Cancel Edit
-                  </button>
-                )}
-              </div>
-            </form>
-          </div>
-        )}
-
-        {/* --- HISTORY VIEW --- */}
-        {view === 'history' && (
-          <div className="space-y-4 animate-fade-in">
-            {entries.length === 0 ? (
-              <div className="text-center py-12 bg-white rounded-2xl border border-slate-200">
-                <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Calendar className="text-slate-300 w-8 h-8" />
-                </div>
-                <p className="text-slate-500 text-lg">No hours logged yet.</p>
-                <button onClick={() => setView('log')} className="mt-4 text-indigo-600 font-medium hover:underline">
-                  Log your first entry
-                </button>
-              </div>
-            ) : (
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left">
-                    <thead className="bg-slate-50 border-b border-slate-200">
-                      <tr>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Date</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Details</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Hours</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {entries
-                        .sort((a, b) => new Date(b.date) - new Date(a.date))
-                        .map((entry) => (
-                        <tr key={entry.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
-                            {formatDate(entry.date)}
-                          </td>
-                          <td className="px-6 py-4">
-                            <p className="text-sm font-semibold text-slate-800">{entry.type}</p>
-                            <p className="text-xs text-slate-500">{entry.org}</p>
-                            <p className="text-xs text-indigo-600 mt-0.5">
-                              {supervisors.find(s => s.email === entry.supervisor)?.name}
-                            </p>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900 text-right">
-                            {parseFloat(entry.hours).toFixed(2)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                            <button 
-                              onClick={() => handleEdit(entry)}
-                              className="text-indigo-600 hover:text-indigo-900 p-2 rounded-full hover:bg-indigo-50 mr-2 transition-colors"
-                              title="Edit"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                            <button 
-                              onClick={() => handleDelete(entry.id)}
-                              className="text-rose-500 hover:text-rose-700 p-2 rounded-full hover:bg-rose-50 transition-colors"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* --- STATS & EXPORT VIEW --- */}
-        {view === 'stats' && (
-          <div className="space-y-6 animate-fade-in">
-            
-            {/* Big Stat Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="bg-indigo-600 text-white p-6 rounded-2xl shadow-lg shadow-indigo-200 relative overflow-hidden">
-                <div className="relative z-10">
-                  <p className="text-indigo-100 font-medium mb-1">Total Service</p>
-                  <h3 className="text-4xl font-bold">{totalHours} <span className="text-xl font-normal text-indigo-200">hours</span></h3>
-                </div>
-                <Clock className="absolute right-4 bottom-4 text-indigo-500 w-24 h-24 opacity-20" />
-              </div>
-
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-center items-center text-center">
-                <p className="text-slate-500 font-medium mb-2">Entries Logged</p>
-                <h3 className="text-4xl font-bold text-slate-800">{entries.length}</h3>
-                <p className="text-xs text-slate-400 mt-1">Keep it up!</p>
-              </div>
-            </div>
-
-            {/* Chart Section */}
-            {chartData.length > 0 && (
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <div className="flex justify-between items-end mb-6">
-                  <h3 className="text-lg font-bold text-slate-800 flex items-center">
-                    <TrendingUp className="w-5 h-5 mr-2 text-indigo-600" />
-                    Monthly Activity
-                  </h3>
-                </div>
-                
-                {/* Custom CSS/SVG Bar Chart */}
-                <div className="h-64 w-full flex items-end justify-between space-x-2 sm:space-x-4 pb-2">
-                  {chartData.map((data, i) => {
-                    const heightPercent = (data.hours / maxHours) * 100;
-                    return (
-                      <div key={i} className="flex-1 flex flex-col items-center group">
-                        <div className="relative w-full flex items-end justify-center h-full">
-                          {/* Tooltip */}
-                          <div className="absolute -top-8 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-xs py-1 px-2 rounded mb-1 whitespace-nowrap z-10">
-                            {data.hours} hrs
-                          </div>
-                          {/* Bar */}
-                          <div 
-                            className="w-full max-w-[40px] bg-indigo-200 group-hover:bg-indigo-500 rounded-t-lg transition-all duration-500 ease-out relative"
-                            style={{ height: `${heightPercent}%` }}
-                          >
-                          </div>
-                        </div>
-                        <span className="text-xs text-slate-500 mt-2 font-medium truncate w-full text-center">
-                          {data.label}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Export Section */}
-            <div className="bg-slate-100 p-6 rounded-2xl border border-slate-200">
-              <div className="flex flex-col sm:flex-row justify-between items-center">
-                <div className="mb-4 sm:mb-0">
-                  <h3 className="text-lg font-bold text-slate-800">Data Export</h3>
-                  <p className="text-sm text-slate-500">Download your data for spreadsheet apps (Excel, Sheets).</p>
-                </div>
-                <button
-                  onClick={exportCSV}
-                  className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-semibold py-3 px-6 rounded-xl shadow-sm transition-all flex items-center"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Download CSV
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<ServiceLogger />);
+    </script>
+</body>
+</html>
