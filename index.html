@@ -26,8 +26,8 @@ const formatDate = (dateString) => {
 };
 
 const supervisors = [
-  { name: 'Diane Flitcroft', email: 'dflitcroft@saintbernadette.com', label: 'St. Bernadette' },
-  { name: 'Ashley Kaschl', email: 'akaschl@popejohnxxiii.org', label: 'Pope John XXIII' }
+  { name: 'Diane Flitcroft', email: 'dflitcroft@saintbernadette.com' },
+  { name: 'Ashley Kaschl', email: 'akaschl@popejohnxxiii.org' }
 ];
 
 // --- Main Component ---
@@ -36,12 +36,14 @@ export default function ServiceLogger() {
   // State
   const [entries, setEntries] = useState([]);
   const [view, setView] = useState('log'); // 'log', 'history', 'stats'
+  
+  // Default org set to Saint Bernadette Catholic Church
   const [formData, setFormData] = useState({
     id: '',
-    type: '',
+    type: '', // We keep 'type' internally for backward compatibility, but label it Description
     hours: '',
     date: new Date().toISOString().split('T')[0],
-    org: '',
+    org: 'Saint Bernadette Catholic Church',
     supervisor: supervisors[0].email
   });
   const [editingId, setEditingId] = useState(null);
@@ -107,13 +109,13 @@ export default function ServiceLogger() {
       showNotification("Hours logged successfully!");
     }
 
-    // Reset form
+    // Reset form, maintaining default org
     setFormData({
       id: '',
       type: '',
       hours: '',
       date: new Date().toISOString().split('T')[0],
-      org: '',
+      org: 'Saint Bernadette Catholic Church',
       supervisor: supervisors[0].email
     });
   };
@@ -143,7 +145,8 @@ export default function ServiceLogger() {
 
   // Export Data
   const exportCSV = () => {
-    const headers = ["Date", "Service Type", "Organization", "Hours", "Supervisor Name", "Supervisor Email"];
+    // Updated header from Service Type to Description
+    const headers = ["Date", "Description", "Organization", "Hours", "Supervisor Name", "Supervisor Email"];
     const rows = entries.map(e => {
       const sup = supervisors.find(s => s.email === e.supervisor) || { name: 'Unknown', email: e.supervisor };
       return [
@@ -299,14 +302,14 @@ export default function ServiceLogger() {
               {/* Middle Row: Type & Org */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-slate-700">Service Type</label>
+                  <label className="block text-sm font-medium text-slate-700">Description</label>
                   <div className="relative">
                     <input
                       type="text"
                       name="type"
                       required
                       list="type-options"
-                      placeholder="e.g. Soup Kitchen, Tutoring..."
+                      placeholder="e.g. Served food, Cleaned up..."
                       value={formData.type}
                       onChange={handleInputChange}
                       className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none"
@@ -325,7 +328,7 @@ export default function ServiceLogger() {
                       name="org"
                       required
                       list="org-options"
-                      placeholder="e.g. Red Cross"
+                      placeholder="e.g. Saint Bernadette"
                       value={formData.org}
                       onChange={handleInputChange}
                       className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none"
@@ -355,8 +358,8 @@ export default function ServiceLogger() {
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="font-semibold text-slate-900">{sup.name}</p>
-                          <p className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">{sup.label}</p>
-                          <p className="text-sm text-slate-600 break-all">{sup.email}</p>
+                          {/* Label removed as requested */}
+                          <p className="text-sm text-slate-600 break-all mt-1">{sup.email}</p>
                         </div>
                         {formData.supervisor === sup.email && (
                           <div className="bg-indigo-500 text-white rounded-full p-1">
@@ -414,7 +417,7 @@ export default function ServiceLogger() {
                         type: '',
                         hours: '',
                         date: new Date().toISOString().split('T')[0],
-                        org: '',
+                        org: 'Saint Bernadette Catholic Church',
                         supervisor: supervisors[0].email
                       });
                     }}
